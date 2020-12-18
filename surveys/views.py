@@ -55,7 +55,7 @@ class ClientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
 
     def retrieve(self, request, **kwargs):
         serializer_class = self.serializer_class
-        user_id = request.query_params.get('user_id')
+        user_id = request.query_params.get('user_id', -1)
         obj = self.get_object()
         if obj.is_already_answered(user_id):
             serializer_class = AnsweredSurveySerializer
@@ -67,6 +67,8 @@ class ClientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     def response(self, request, **kwargs):
         obj = self.get_object()
         user_id = request.query_params.get('user_id')
+        if user_id is None:
+            return Response("user_id mast be in query parameters", status=status.HTTP_400_BAD_REQUEST)
         data = {
             **request.data,
             'pk': obj.pk,
@@ -74,8 +76,10 @@ class ClientViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
         }
         serializer = SurveyResponseSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(status=status.HTTP_201_CREATED)
+        survey = serializer.save()
+
+        serializer = AnsweredSurveySerializer(survey, context={'user_id': user_id})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False)
     def completed_list(self, request):

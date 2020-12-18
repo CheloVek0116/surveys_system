@@ -6,6 +6,7 @@ from surveys.models import (
     ChoiceAnswerOption,
     ChoiceQuestion,
     MultipleChoiceAnswer,
+    MultipleChoiceAnswerOption,
     MultipleChoiceQuestion,
     Survey,
     TextAnswer,
@@ -142,8 +143,11 @@ class SurveyResponseSerializer(serializers.ModelSerializer):
         return data
 
     def save(self):
+        survey_pk = self.validated_data['pk']
         user_id = self.validated_data['user_id']
         answers = self.validated_data['answers']
+
+        survey = Survey.objects.get(pk=survey_pk)
 
         for answer in answers:
             question_model, answer_model = {
@@ -154,23 +158,29 @@ class SurveyResponseSerializer(serializers.ModelSerializer):
 
             question = question_model.objects.get(pk=answer['pk'])
 
+            choices = None
             if question.question_type == QuestionTypes.TEXT.value:
                 answer = {
                     **answer['answer'],
                     'user_id': user_id,
                     'question': question,
                 }
+                answer_model.objects.create(**answer)
             elif question.question_type == QuestionTypes.CHOICE.value:
                 answer = {
-                    'choice': ChoiceAnswerOption.objects.get(**answer['answer']),
+                    'choice': ChoiceAnswerOption.objects.get(**answer['answer'], question=question),
                     'user_id': user_id,
                     'question': question,
                 }
             elif question.question_type == QuestionTypes.MULTIPLE_CHOICE.value:
+                choices = [MultipleChoiceAnswerOption.objects.get(**a, question=question) for a in answer['answer']]
                 answer = {
-                    'choices': [ChoiceAnswerOption.objects.get(**a) for a in answer['answer']],
                     'user_id': user_id,
                     'question': question,
                 }
 
-        return answer_model.objects.create(**answer)
+            answer = answer_model.objects.create(**answer)
+            if choices is not None:
+                answer.choices.set(choices)
+
+        return survey
