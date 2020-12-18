@@ -10,6 +10,7 @@ $ source venv/bin/activate
 $ pip install -r requirements.txt
 $ python manage.py makemigrations
 $ python manage.py migrate
+$ python manage.py createsuperuser
 $ python manage.py runserver
 ```
 
@@ -19,6 +20,14 @@ Server running on `http://localhost:8000`
 
 ## URLs
 ```
+# getting authorization token
+http://localhost:8000/api/token/
+    POST
+        data = {
+            "username": "username",
+            "password": "password"
+        }
+
 # admin urls
 http://localhost:8000/api/admin_surveys/<int:pk>/ - detail survey [GET, DELETE, PUT]
 http://localhost:8000/api/admin_surveys/ - list of all surveys [GET, POST]
